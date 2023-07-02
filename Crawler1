@@ -1,0 +1,101 @@
+'''
+https://stores.geohey.com/ranklist
+定位option选择框
+使用循环进行选择和数据获取
+    获取数据后转换为int类型，进行相加
+进行选择操作
+定位元素后获取文本数据
+构造数据表
+'''
+import time
+import re
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.select import Select
+import pandas as pd
+
+wd = webdriver.Chrome(service=Service(r'D:\文档\1a经管国贸班级事务\1a作业\python课作业\大数据作业\机器学习\chromedriver.exe'))  #打开chrome浏览器
+
+wd.get('https://stores.geohey.com/login')   #打开链接
+#登陆操作
+time.sleep(30)   #手动完成登陆操作
+
+wd.get('https://stores.geohey.com/ranklist')    #进入数据页面
+
+time.sleep(2)
+opt0 = wd.find_element(By.XPATH,'/html/body/div[1]/div/div/div/section[2]/div/div/div[1]/div/div[2]/span/select')    #选择西式快餐
+Select(opt0).select_by_index(6)
+time.sleep(6)
+
+opt = wd.find_element(By.XPATH,'/html/body/div[1]/div/div/div/section[2]/div/div/div[1]/div/div[3]/span/select') #选择省份下拉框
+time.sleep(3)
+opt1 = wd.find_element(By.XPATH,'/html/body/div[1]/div/div/div/section[2]/div/div/div[1]/div/div[4]/span/select') #选择城市下拉框
+#广东39 广西40 浙江31 江苏30 福建33 安徽32 江西34 山东35 北京20 上海22
+a = [30,31,32,33,34,35,39,40]
+citynum = [40]
+
+df = pd.DataFrame(columns=['city', 'num'])  #定义数据表
+for i in citynum:
+    Select(opt).select_by_index(i)  #选择省份
+    b = len(Select(opt1).options)
+    time.sleep(2)
+    for j in range(1,b):
+        Select(opt1).select_by_index(j)  #选择城市
+        time.sleep(2)
+        num = 0
+        both = 0
+        for k in [1,2,3,4,5,6,7,8]:
+            a = r"//table[@class='table is-hoverable']/tbody/tr[" + str(k) + ']'
+            eleA = wd.find_element(By.XPATH,a)
+            eleAT = eleA.text
+            name = re.split('[ \n]', eleAT)  # 将所有数据分割为列表
+            if name[0] == '肯德基':    #判断数据来源是否为肯德基
+                num1 = name[2]
+                num = num + int(num1)
+                k += 1
+                both += 1
+                if both == 2:
+                    break
+            elif name[0] =='麦当劳':   #判断数据来源是否为麦当劳
+                num1 = name[2]
+                num = num + int(num1)
+                k += 1
+                both += 1
+                if both == 2:
+                    break
+            else:
+                if both == 2:
+                    break
+                k += 1
+        chosen = opt1.text   #获取当前选择的城市名称
+        pattern = r'\n'  # 定义分隔符
+        city = re.split(pattern,chosen)   #将所有城市名称分割为列表
+        df = df.append(pd.DataFrame([[city[j],num]], columns=df.columns))    #向数据表中增加城市名称和数据
+        j+=1
+        print(df)
+        time.sleep(2)
+    i+=1
+    df.to_excel("student.xlsx", sheet_name="df1")
+    time.sleep(2)
+
+print(df)
+
+Select(opt).select_by_index(20)  #选择北京
+numBJ1 = wd.find_element(By.XPATH,"/html/body/div[1]/div/div/div/section[2]/div/div/div[3]/div[1]/table/tbody/tr[2]/td[3]")  # 获取北京城市肯德基的数据
+numBJ2 = wd.find_element(By.XPATH,"/html/body/div[1]/div/div/div/section[2]/div/div/div[3]/div[1]/table/tbody/tr[3]/td[3]")  # 获取北京麦当劳门店的数据
+numBJSUM = int(numBJ1.text) + int(numBJ2.text)
+df = df.append(pd.DataFrame([['北京市', numBJSUM]], columns=df.columns))  # 向数据表中增加城市名称和数据
+
+print(df)
+
+Select(opt).select_by_index(22)  #选择上海
+numSH1 = wd.find_element(By.XPATH,"/html/body/div[1]/div/div/div/section[2]/div/div/div[3]/div[1]/table/tbody/tr[2]/td[3]")  # 获取上海城市肯德基的数据
+numSH2 = wd.find_element(By.XPATH,"/html/body/div[1]/div/div/div/section[2]/div/div/div[3]/div[1]/table/tbody/tr[3]/td[3]")  # 获取上海麦当劳门店的数据
+numSHSUM = int(numSH1.text) + int(numSH2.text)
+df = df.append(pd.DataFrame([['上海市', numSHSUM]], columns=df.columns))  # 向数据表中增加城市名称和数据
+
+print(df)
+
+#将数据写入excel
+df.to_excel("df.xlsx", sheet_name="df1")
